@@ -4,7 +4,7 @@
 Build Confirmed Config - T180 Skill Script
 
 Builds confirmed IO ring configuration from intent graph JSON.
-Uses local imports from assets/core/.
+Uses local imports from io_ring/.
 
 Usage:
     python build_confirmed_config.py <intent_graph.json> <output_confirmed.json> [--skip-editor]
@@ -19,7 +19,7 @@ import os
 import sys
 from pathlib import Path
 
-# Add assets to path for local imports
+# Add skill root to path for local imports
 skill_dir = Path(__file__).parent.parent.resolve()
 sys.path.insert(0, str(skill_dir))
 
@@ -38,7 +38,7 @@ def _format_exception(error: Exception) -> str:
 
 
 def main():
-    from assets.core.layout.confirmed_config_builder import build_confirmed_config_from_io_config, build_draft_editor_session
+    from io_ring.layout.confirmed_config import build_confirmed_config_from_io_config, build_draft_editor_session
 
     # Parse arguments
     if len(sys.argv) < 3:
@@ -164,7 +164,7 @@ def main():
         print(f"     4. JSON parsing error in intent graph")
         print(f"   Troubleshooting:")
         print(f"     - Check intent graph format is correct")
-        print(f"     - Verify device info files exist in assets/device_info/")
+        print(f"     - Verify device info files exist in io_ring/schematic/devices/")
         print(f"     - Check if dependencies are installed")
         sys.exit(1)
 

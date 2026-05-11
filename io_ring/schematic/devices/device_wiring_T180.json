@@ -1,0 +1,111 @@
+{
+  "_comment": "T180 device wiring table. Maps each base device name to pin label sources. The enrichment engine resolves label_from references to concrete labels per semantic instance.",
+  "schema_version": "1.0",
+  "tech_node": "T180",
+  "label_from_taxonomy": {
+    "self": "Instance's own name",
+    "self_core": "Instance name + '_CORE'",
+    "domain.vdd_consumer": "PVDD1CDG consumer signal in this voltage domain block",
+    "domain.vss_consumer": "PVSS1CDG consumer signal in this voltage domain block",
+    "domain.vdd_provider": "PVDD2CDG VDDPST provider signal in this voltage domain block",
+    "domain.vss_provider": "PVSS2CDG VSSPST provider signal in this voltage domain block",
+    "const.noConn": "Literal 'noConn'"
+  },
+  "devices": {
+    "PVDD1ANA": {
+      "family": "analog_io",
+      "pins": {
+        "VDD": {"label_from": "domain.vdd_consumer"},
+        "VSS": {"label_from": "domain.vss_consumer"},
+        "VDDPST": {"label_from": "domain.vdd_provider"},
+        "VSSPST": {"label_from": "domain.vss_provider"},
+        "AVDD": {"label_from": "self"}
+      }
+    },
+    "PVSS1ANA": {
+      "family": "analog_io",
+      "pins": {
+        "VDD": {"label_from": "domain.vdd_consumer"},
+        "VSS": {"label_from": "domain.vss_consumer"},
+        "VDDPST": {"label_from": "domain.vdd_provider"},
+        "VSSPST": {"label_from": "domain.vss_provider"},
+        "AVSS": {"label_from": "self"}
+      }
+    },
+    "PVDD1CDG": {
+      "family": "power_consumer",
+      "pins": {
+        "VDD": {"label_from": "self"},
+        "VSS": {"label_from": "domain.vss_consumer"},
+        "VDDPST": {"label_from": "domain.vdd_provider"},
+        "VSSPST": {"label_from": "domain.vss_provider"}
+      }
+    },
+    "PVSS1CDG": {
+      "family": "ground_consumer",
+      "pins": {
+        "VDD": {"label_from": "domain.vdd_consumer"},
+        "VSS": {"label_from": "self"},
+        "VDDPST": {"label_from": "domain.vdd_provider"},
+        "VSSPST": {"label_from": "domain.vss_provider"}
+      }
+    },
+    "PVDD2CDG": {
+      "family": "power_provider",
+      "pins": {
+        "VDD": {"label_from": "domain.vdd_consumer"},
+        "VSS": {"label_from": "domain.vss_consumer"},
+        "VDDPST": {"label_from": "self"},
+        "VSSPST": {"label_from": "domain.vss_provider"}
+      }
+    },
+    "PVSS2CDG": {
+      "family": "ground_provider",
+      "pins": {
+        "VDD": {"label_from": "domain.vdd_consumer"},
+        "VSS": {"label_from": "domain.vss_consumer"},
+        "VDDPST": {"label_from": "domain.vdd_provider"},
+        "VSSPST": {"label_from": "self"}
+      }
+    },
+    "PDDW0412SCDG": {
+      "family": "digital_io",
+      "pins": {
+        "VDD": {"label_from": "domain.vdd_consumer"},
+        "VSS": {"label_from": "domain.vss_consumer"},
+        "VDDPST": {"label_from": "domain.vdd_provider"},
+        "VSSPST": {"label_from": "domain.vss_provider"}
+      },
+      "io_direction_rules": {
+        "input": {},
+        "output": {}
+      }
+    }
+  },
+  "corner_devices": {
+    "PCORNER": {
+      "family": "corner",
+      "no_suffix": true
+    }
+  },
+  "family_classification": {
+    "digital_families": [
+      "digital_io",
+      "power_consumer",
+      "ground_consumer",
+      "power_provider",
+      "ground_provider"
+    ],
+    "analog_families": [
+      "analog_io",
+      "power_consumer",
+      "ground_consumer",
+      "power_provider",
+      "ground_provider"
+    ]
+  },
+  "digital_io_devices": {
+    "list": ["PDDW0412SCDG"]
+  }
+}
+

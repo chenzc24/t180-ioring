@@ -4,6 +4,93 @@
 
 Enrich the Phase 1 draft JSON with device types, pin connections, direction, domain, and corners.
 
+## Semantic Intent Schema (Engine Input)
+
+T180 now uses the same execution architecture as T28: the AI writes a compact
+semantic intent file, then `scripts/enrich_intent.py` mechanically generates the
+full intent graph.
+
+Write semantic intent to `{output_dir}/io_ring_semantic_intent.json`:
+
+```json
+{
+  "ring_config": {
+    "process_node": "T180",
+    "chip_width": 630,
+    "chip_height": 630,
+    "top_count": 4,
+    "bottom_count": 4,
+    "left_count": 4,
+    "right_count": 4,
+    "width": 12,
+    "height": 12,
+    "placement_order": "clockwise"
+  },
+  "domains": {
+    "analog_1": {
+      "kind": "analog",
+      "vdd_consumer": "VIOLA",
+      "vss_consumer": "GIOLA",
+      "vdd_provider": "VIOHA",
+      "vss_provider": "GIOHA"
+    },
+    "digital_1": {
+      "kind": "digital",
+      "vdd_consumer": "VIOLD",
+      "vss_consumer": "GIOLD",
+      "vdd_provider": "VIOHD",
+      "vss_provider": "GIOHD"
+    }
+  },
+  "instances": [
+    {
+      "name": "VIOLA",
+      "position": "top_0",
+      "type": "pad",
+      "device": "PVDD1CDG",
+      "domain": "analog_1"
+    },
+    {
+      "name": "CKAZ",
+      "position": "right_0",
+      "type": "pad",
+      "device": "PDDW0412SCDG",
+      "domain": "digital_1",
+      "direction": "input"
+    }
+  ]
+}
+```
+
+Schema rules:
+
+- T180 dimensional fields from the draft must be preserved: `chip_width`, `chip_height`, `top_count`, `bottom_count`, `left_count`, `right_count`, `pad_width`, `pad_height`, `pad_spacing`, and `corner_size` when present.
+- `ring_config.width` and `ring_config.height` are compatibility count fields. If omitted, the engine derives them from the side counts.
+- `ring_config.placement_order` must be copied from the draft.
+- `domains` keys are concrete voltage-domain block ids. Use `kind: "analog"` or `kind: "digital"`.
+- Every domain must define `vdd_consumer`, `vss_consumer`, `vdd_provider`, and `vss_provider`.
+- Every instance must preserve draft `name`, `position`, and `type`.
+- Every instance must provide a base T180 `device` name: `PVDD1ANA`, `PVSS1ANA`, `PVDD1CDG`, `PVSS1CDG`, `PVDD2CDG`, `PVSS2CDG`, or `PDDW0412SCDG`.
+- Every instance must set `domain` to one of the concrete domain ids in `domains`.
+- `PDDW0412SCDG` instances must set `direction` to `input` or `output`.
+- Do not include `pin_connection`, `view_name`, fillers, or corners in semantic intent.
+- Do not add T28 orientation suffixes such as `_H_G` or `_V_G`; T180 devices use base names.
+
+The engine writes `{output_dir}/io_ring_intent_graph.json` and adds:
+
+- `pin_connection` using `io_ring/schematic/devices/device_wiring_T180.json`
+- `view_name: "layout"`
+- broad final `domain`: `analog`, `digital`, or `null`
+- concrete `voltage_domain` id for pads
+- four `PCORNER` instances at side transitions
+
+Engine exit codes:
+
+- `0`: success
+- `1`: semantic input error; fix `io_ring_semantic_intent.json`
+- `2`: wiring table or engine bug; stop and report
+- `3`: gate failure; fix semantic classification/domain/provider assignment
+
 ## Scope
 
 This phase adds the following fields to each instance:

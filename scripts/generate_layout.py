@@ -4,7 +4,7 @@
 Generate Layout - T180 Skill Script
 
 Generates layout SKILL (.il) code from confirmed config JSON.
-Uses local imports from assets/core/.
+Uses local imports from io_ring/.
 
 Usage:
     python generate_layout.py <config.json> <output.il>
@@ -22,7 +22,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Add assets to path for local imports
+# Add skill root to path for local imports
 skill_dir = Path(__file__).parent.parent.resolve()
 sys.path.insert(0, str(skill_dir))
 
@@ -61,7 +61,7 @@ def _resolve_confirmed_config_path(config_path: Path, consume_confirmed_only: bo
         return expected_confirmed
 
     # Build confirmed config if not exists
-    from assets.core.layout.confirmed_config_builder import (
+    from io_ring.layout.confirmed_config import (
         build_confirmed_config_from_io_config,
     )
 
@@ -77,11 +77,11 @@ def _resolve_confirmed_config_path(config_path: Path, consume_confirmed_only: bo
 
 
 def main():
-    from assets.core.layout.layout_visualizer import visualize_layout_T180
-    from assets.core.layout.layout_generator_factory import generate_layout_from_json
-    from assets.core.intent_graph.json_validator import convert_config_to_list
+    from io_ring.layout.visualizer import visualize_layout_T180
+    from io_ring.layout.layout_generator_factory import generate_layout_from_json
+    from io_ring.validation.json_validator import convert_config_to_list
 
-    assets_dir = skill_dir / "assets"
+    package_dir = skill_dir / "io_ring"
 
     # Parse arguments
     if len(sys.argv) < 3:

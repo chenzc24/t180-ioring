@@ -14,5 +14,5 @@
 # Required by bridge_utils.py and scripts
 python-dotenv>=1.0,<2.0
 
-# Required by assets/core/layout/layout_visualizer.py
+# Required by io_ring/layout/visualizer.py
 matplotlib>=3.5,<4.0

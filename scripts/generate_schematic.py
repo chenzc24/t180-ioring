@@ -4,7 +4,7 @@
 Generate Schematic - T180 Skill Script
 
 Generates schematic SKILL (.il) code from confirmed config JSON.
-Uses local imports from assets/core/.
+Uses local imports from io_ring/.
 
 Usage:
     python generate_schematic.py <config.json> <output.il>
@@ -22,7 +22,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Add assets to path for local imports
+# Add skill root to path for local imports
 skill_dir = Path(__file__).parent.parent.resolve()
 sys.path.insert(0, str(skill_dir))
 
@@ -61,7 +61,7 @@ def _resolve_confirmed_config_path(config_path: Path, consume_confirmed_only: bo
         return expected_confirmed
 
     # Build confirmed config if not exists
-    from assets.core.layout.confirmed_config_builder import (
+    from io_ring.layout.confirmed_config import (
         build_confirmed_config_from_io_config as build_confirmed_t180,
     )
 
@@ -77,12 +77,12 @@ def _resolve_confirmed_config_path(config_path: Path, consume_confirmed_only: bo
 
 
 def main():
-    from assets.core.intent_graph.json_validator import convert_config_to_list
-    from assets.core.layout.process_node_config import get_template_file_paths
-    from assets.core.schematic.schematic_generator_T180 import SchematicGenerator
-    from assets.device_info.IO_decive_info_T180_parser import DeviceTemplateManager
+    from io_ring.validation.json_validator import convert_config_to_list
+    from io_ring.layout.process_config import get_template_file_paths
+    from io_ring.schematic.generator import SchematicGenerator
+    from io_ring.schematic.device_parser import DeviceTemplateManager
 
-    assets_dir = skill_dir / "assets"
+    package_dir = skill_dir / "io_ring"
 
     # Parse arguments
     if len(sys.argv) < 3:
@@ -120,7 +120,7 @@ def main():
         # Template search paths
         possible_paths = []
         for name in template_file_names:
-            possible_paths.append(skill_dir / "assets" / "device_info" / name)
+            possible_paths.append(skill_dir / "io_ring" / "schematic" / "devices" / name)
             possible_paths.append(skill_dir / name)
         template_file = next((p for p in possible_paths if p.exists()), None)
         if template_file is None:
