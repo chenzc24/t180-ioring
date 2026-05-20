@@ -90,6 +90,7 @@ def _get_remote_bridge_dir() -> str:
     """Resolve the remote bridge work directory used by VirtuosoClient."""
     try:
         from virtuoso_bridge import VirtuosoClient  # type: ignore
+        _load_vb_env()
         client = VirtuosoClient.from_env()
         tunnel = getattr(client, "_tunnel", None)
         if tunnel is not None:
@@ -125,7 +126,7 @@ def _scp_upload(local_path: str, remote_path: str) -> bool:
     try:
         ssh = _get_ssh()
         host = ssh.remote_host
-        user = os.environ.get("VB_REMOTE_USER", "")
+        user = getattr(ssh, "_remote_user", None) or os.environ.get("VB_REMOTE_USER", "").strip()
         if user:
             target = f"{user}@{host}:{remote_path}"
         else:

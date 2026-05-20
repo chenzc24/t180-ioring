@@ -104,7 +104,7 @@ def run_il_file(il_file_path: str, lib: str, cell: str, view: str = "layout", sa
                     f"into wrong cell. Expected {lib}/{cell}/{view}. "
                     f"Close other cells in Virtuoso and retry.")
 
-        ok = load_skill_file(str(skill_path.resolve()), timeout=300)
+        ok = load_skill_file(str(skill_path.resolve()), timeout=600)
         if ok:
             if save:
                 if save_current_cellview(timeout=30):
