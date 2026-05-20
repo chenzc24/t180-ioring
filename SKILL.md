@@ -235,6 +235,10 @@ $AMS_PYTHON $SCRIPTS_PATH/run_il_with_screenshot.py \
 $AMS_PYTHON $SCRIPTS_PATH/run_drc.py {lib} {cell} layout T180
 ```
 
+- T180 DRC defaults to the benchmark selected-rule deck
+  `calibre/T180/_drc_rule_T180_cell_benchmark_`.
+- The full/current selected deck is still available as
+  `DRC_RULE_FILE_180_FULL` in `calibre/env_common.csh`.
 - Exit 0 -> Step 10.
 - Exit 1 -> parse report, fix semantic intent, rerun Steps 3-9. Maximum 2 attempts.
 

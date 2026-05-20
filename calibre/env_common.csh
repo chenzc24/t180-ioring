@@ -61,7 +61,11 @@ setenv LVS_RULE_FILE_180 ${SCRIPT_DIR}/T180/_calibre_T180.lvs_
 
 # DRC rule files (28nm / 180nm)
 setenv DRC_RULE_FILE_28 ${SCRIPT_DIR}/T28/_drc_rule_T28_cell_
-setenv DRC_RULE_FILE_180 ${SCRIPT_DIR}/T180/_drc_rule_T180_cell_
+# T180 defaults to the benchmark selected-rule deck. It excludes known PDK
+# macro/density waiver checks: LVISO.R.1.1, OD.EX.1, OD2.O.2, OD2.O.3,
+# RES.2, RES.4_PO, RES.8, ESD.24g, LUP.3.4g_5V, LUP.5.4g_5V, OD.R.1.
+setenv DRC_RULE_FILE_180_FULL ${SCRIPT_DIR}/T180/_drc_rule_T180_cell_
+setenv DRC_RULE_FILE_180 ${SCRIPT_DIR}/T180/_drc_rule_T180_cell_benchmark_
 
 # Run directories (relative to project root)
 setenv PEX_RUN_DIR ${PROJECT_ROOT}/output/pex
