@@ -65,6 +65,7 @@ Write semantic intent to `{output_dir}/io_ring_semantic_intent.json`:
 Schema rules:
 
 - T180 dimensional fields from the draft must be preserved: `chip_width`, `chip_height`, `top_count`, `bottom_count`, `left_count`, `right_count`, `pad_width`, `pad_height`, `pad_spacing`, and `corner_size` when present.
+- If the user prompt contains a target Virtuoso library for the generated cell, store it separately as `target_library` or pass it to the Virtuoso load step. Do not put target libraries such as `llm_test` in `ring_config.library_name`; that field is reserved for the T180 IO device master library and normally resolves to `tpd018bcdnv5`.
 - `ring_config.width` and `ring_config.height` are compatibility count fields. If omitted, the engine derives them from the side counts.
 - `ring_config.placement_order` must be copied from the draft.
 - `domains` keys are concrete voltage-domain block ids. Use `kind: "analog"` or `kind: "digital"`.

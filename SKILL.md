@@ -80,6 +80,10 @@ All subsequent steps must use `$AMS_PYTHON`, not `python3`.
 
 Parse user input: signal list, ring dimensions, placement order, and voltage-domain specs.
 If the user explicitly requests the visual/draft editor, set `AMS_DRAFT_EDITOR=on` for this run.
+If the prompt specifies a target Virtuoso library for the generated cell, keep it
+as a load-time target (or `target_library`) rather than `ring_config.library_name`.
+For T180, `ring_config.library_name` is the IO device master library and should
+normally remain `tpd018bcdnv5` via `device_masters.default_library`.
 
 ### Step 1: Image Input Processing
 

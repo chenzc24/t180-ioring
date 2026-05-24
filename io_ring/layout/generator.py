@@ -317,6 +317,24 @@ def generate_layout_skill_from_components(
     """Generate 180nm layout SKILL script from finalized components only."""
     print("[>>] Starting Layout Skill script generation...")
 
+    def resolve_device_master_library() -> str:
+        """Resolve the Virtuoso library that owns T180 IO device masters.
+
+        ``ring_config.library_name`` is ambiguous in user prompts and is often
+        the output/target library. Device masters must come from the process
+        PDK library unless explicitly overridden through device_masters or the
+        dedicated master_library_name field.
+        """
+        device_masters = ring_config.get("device_masters", {})
+        if isinstance(device_masters, dict):
+            default_library = device_masters.get("default_library")
+            if isinstance(default_library, str) and default_library:
+                return default_library
+        master_library = ring_config.get("master_library_name")
+        if isinstance(master_library, str) and master_library:
+            return master_library
+        return generator.config.get("library_name", "tpd018bcdnv5")
+
     def ensure_unique_nonfunctional_names(components: List[dict]) -> List[dict]:
         used_names = set()
         for component in components:
@@ -397,7 +415,7 @@ def generate_layout_skill_from_components(
         name = component["name"]
         component_type = component["type"]
         position_str = component.get('position_str', 'abs')
-        lib = ring_config.get("library_name", generator.config.get("library_name", "tpd018bcdnv5"))
+        lib = resolve_device_master_library()
         view = component.get("view_name", ring_config.get("view_name", "layout"))
         
         # Use name_position_str format (matching merge_source, no sanitization)
@@ -458,7 +476,7 @@ def generate_layout_skill_from_components(
             position_str = pos_field if isinstance(pos_field, str) and pos_field else "abs"
         skill_inst_name = f"{name}_{position_str}" if name else f"filler_{position_str}"
         x, y = position
-        lib = ring_config.get("library_name", generator.config.get("library_name", "tpd018bcdnv5"))
+        lib = resolve_device_master_library()
         view = filler.get("view_name", ring_config.get("view_name", "layout"))
         skill_commands.append(f'dbCreateParamInstByMasterName(cv "{lib}" "{device}" "{view}" "{skill_inst_name}" list({x} {y}) "{orientation}")')
   
