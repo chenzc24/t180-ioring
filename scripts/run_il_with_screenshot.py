@@ -144,7 +144,7 @@ def main():
         check_bridge_installed,
         ui_redraw,
         ui_zoom_absolute_scale,
-        load_script_and_take_screenshot,
+        load_script_and_take_screenshot_verbose,
     )
 
     # Early check — fail fast if bridge is not installed
@@ -243,13 +243,27 @@ def main():
             save_path = str((save_dir / f"virtuoso_{Path(il_file_path).stem}_{stamp}.png").resolve())
 
         screenshot_script = str((skill_dir / "skill_code" / "screenshot.il").resolve(strict=False))
-        if load_script_and_take_screenshot(screenshot_script, save_path, timeout=20):
+        screenshot_ok = False
+        screenshot_error = ""
+        for shot_attempt in range(1, 4):
+            screenshot_ok, screenshot_error = load_script_and_take_screenshot_verbose(
+                screenshot_script, save_path, timeout=30
+            )
+            if screenshot_ok:
+                break
+            print(f"   [WARN] Screenshot attempt {shot_attempt}/3 failed: {screenshot_error}")
+            if shot_attempt < 3:
+                ui_redraw(timeout=10)
+                ui_zoom_absolute_scale(0.9, timeout=10)
+                sleep(3.0)
+
+        if screenshot_ok:
             result_dict["status"] = "success"
             result_dict["message"] = run_result
             result_dict["screenshot_path"] = save_path
             result_dict["observations"].append(f"Screenshot saved: {save_path}")
         else:
-            result_dict["message"] = "[ERROR] Screenshot failed"
+            result_dict["message"] = f"[ERROR] Screenshot failed: {screenshot_error or 'unknown error'}"
 
         print(json.dumps(result_dict, ensure_ascii=False, indent=2))
         sys.exit(0)
