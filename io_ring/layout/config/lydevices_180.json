@@ -49,8 +49,8 @@
       "secondary_width": 1
     },
     "wire_offsets": {
-      "vdd_wire_offset": 5,
-      "gnd_wire_offset": 7
+      "vdd_wire_offset": 2,
+      "gnd_wire_offset": 5
     },
     "via": {
       "via_def_name": "M2_M1",

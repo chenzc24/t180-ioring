@@ -16,6 +16,81 @@ class SkillGeneratorT180:
     def __init__(self, config: dict):
         self.config = config
         self.position_calculator = PositionCalculator(config)
+
+    def _digital_wire_offsets(self) -> Tuple[float, float]:
+        """Return VDD/GND digital config-line offsets from the pad edge."""
+        wire_offsets = self.config.get("skill_params", {}).get("wire_offsets", {})
+        return (
+            wire_offsets.get("vdd_wire_offset", 2),
+            wire_offsets.get("gnd_wire_offset", 5),
+        )
+
+    def _append_corner_45_bridge(
+        self,
+        skill_commands: List[str],
+        x1: float,
+        y1: float,
+        x2: float,
+        y2: float,
+    ) -> None:
+        """Connect adjacent side config wires with a 45-degree corner bridge.
+
+        If the two endpoints are not exactly on a 45-degree diagonal, emit a
+        45-degree segment first and finish with one short orthogonal segment.
+        """
+        def fmt(value: float) -> str:
+            return f"{value:.6f}".rstrip("0").rstrip(".")
+
+        def append_corner_via(x: float, y: float) -> None:
+            skill_commands.append("tech = techGetTechFile(cv)")
+            skill_commands.append('viaParams = list(list("cutRows" 2) list("cutColumns" 2))')
+            skill_commands.append('viaDefId = techFindViaDefByName(tech "M2_M1")')
+            skill_commands.append(
+                f'newVia = dbCreateVia(cv viaDefId list({fmt(x)} {fmt(y)}) "R0" viaParams)'
+            )
+
+        def append_diagonal_polygon(x_start: float, y_start: float, x_end: float, y_end: float) -> None:
+            sx = 1 if x_end > x_start else -1
+            sy = 1 if y_end > y_start else -1
+            # A 1um-wide 45-degree dbCreatePath creates off-grid vertices.
+            # 0.35um projected half-width keeps every polygon vertex on the
+            # 0.005um grid while preserving overlap with adjacent 1um wires.
+            normal_x = -sy * 0.35
+            normal_y = sx * 0.35
+            points = [
+                (x_start + normal_x, y_start + normal_y),
+                (x_end + normal_x, y_end + normal_y),
+                (x_end - normal_x, y_end - normal_y),
+                (x_start - normal_x, y_start - normal_y),
+            ]
+            point_expr = " ".join(f"list({fmt(x)} {fmt(y)})" for x, y in points)
+            append_corner_via(x_start, y_start)
+            skill_commands.append(
+                f'dbCreatePolygon(cv list("METAL2" "drawing") list({point_expr}))'
+            )
+            append_corner_via(x_end, y_end)
+
+        dx = x2 - x1
+        dy = y2 - y1
+        abs_dx = abs(dx)
+        abs_dy = abs(dy)
+        if abs(abs_dx - abs_dy) < 1e-9:
+            append_diagonal_polygon(x1, y1, x2, y2)
+            return
+
+        if abs_dx == 0 or abs_dy == 0:
+            skill_commands.append(
+                f'dbCreatePath(cv list("METAL1" "drawing") list(list({x1} {y1}) list({x2} {y2})) 1 "extendExtend")'
+            )
+            return
+
+        step = min(abs_dx, abs_dy)
+        x_mid = x1 + (step if dx > 0 else -step)
+        y_mid = y1 + (step if dy > 0 else -step)
+        append_diagonal_polygon(x1, y1, x_mid, y_mid)
+        skill_commands.append(
+            f'dbCreatePath(cv list("METAL1" "drawing") list(list({x_mid} {y_mid}) list({x2} {y2})) 1 "extendExtend")'
+        )
     
     def _format_core_label(self, signal_name: str) -> str:
         """Format signal name with _CORE suffix, handling <> notation correctly.
@@ -48,8 +123,7 @@ class SkillGeneratorT180:
         sides_with_lines: dict = {}
 
         # Configuration offsets for digital IO wires (GND_wire or VDD_wire relative to pad edges)
-        vdd_wire_offset = 5
-        gnd_wire_offset = 7
+        vdd_wire_offset, gnd_wire_offset = self._digital_wire_offsets()
 
         # Cache configuration line endpoints for each side in one pass
         side_endpoints: dict = {}
@@ -106,68 +180,42 @@ class SkillGeneratorT180:
 
         # Connect configuration lines at corners (reuse side_endpoints)
         if len(sides_with_lines) > 1:
-            corner_connections = {
-                "top_left": ["R180", "R270"],
-                "top_right": ["R180", "R90"],
-                "bottom_left": ["R0", "R270"],
-                "bottom_right": ["R0", "R90"]
+            corner_endpoints = {
+                "top_left": (
+                    ("R180", "x_range", 0, "y"),
+                    ("R270", "x", None, "y_range", 1),
+                ),
+                "top_right": (
+                    ("R180", "x_range", 1, "y"),
+                    ("R90", "x", None, "y_range", 1),
+                ),
+                "bottom_left": (
+                    ("R0", "x_range", 0, "y"),
+                    ("R270", "x", None, "y_range", 0),
+                ),
+                "bottom_right": (
+                    ("R0", "x_range", 1, "y"),
+                    ("R90", "x", None, "y_range", 0),
+                ),
             }
-            for corner_name, adjacent_sides in corner_connections.items():
-                if adjacent_sides[0] in side_endpoints and adjacent_sides[1] in side_endpoints:
-                    # High voltage line
-                    if corner_name == "top_left":
-                        x1 = side_endpoints["R180"]["high"]["x_range"][0]
-                        y1 = side_endpoints["R180"]["high"]["y"]
-                        x2 = side_endpoints["R270"]["high"]["x"]
-                        y2 = side_endpoints["R270"]["high"]["y_range"][1]
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x1} {y1}) list({x2} {y1})) 1 "extendExtend")')
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x2} {y1}) list({x2} {y2})) 1 "extendExtend")')
-                        # Low voltage line
-                        x1l = side_endpoints["R180"]["low"]["x_range"][0]
-                        y1l = side_endpoints["R180"]["low"]["y"]
-                        x2l = side_endpoints["R270"]["low"]["x"]
-                        y2l = side_endpoints["R270"]["low"]["y_range"][1]
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x1l} {y1l}) list({x2l} {y1l})) 1 "extendExtend")')
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x2l} {y1l}) list({x2l} {y2l})) 1 "extendExtend")')
-                    elif corner_name == "top_right":
-                        x1 = side_endpoints["R180"]["high"]["x_range"][1]
-                        y1 = side_endpoints["R180"]["high"]["y"]
-                        x2 = side_endpoints["R90"]["high"]["x"]
-                        y2 = side_endpoints["R90"]["high"]["y_range"][1]
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x1} {y1}) list({x2} {y1})) 1 "extendExtend")')
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x2} {y1}) list({x2} {y2})) 1 "extendExtend")')
-                        x1l = side_endpoints["R180"]["low"]["x_range"][1]
-                        y1l = side_endpoints["R180"]["low"]["y"]
-                        x2l = side_endpoints["R90"]["low"]["x"]
-                        y2l = side_endpoints["R90"]["low"]["y_range"][1]
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x1l} {y1l}) list({x2l} {y1l})) 1 "extendExtend")')
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x2l} {y1l}) list({x2l} {y2l})) 1 "extendExtend")')
-                    elif corner_name == "bottom_left":
-                        x1 = side_endpoints["R0"]["high"]["x_range"][0]
-                        y1 = side_endpoints["R0"]["high"]["y"]
-                        x2 = side_endpoints["R270"]["high"]["x"]
-                        y2 = side_endpoints["R270"]["high"]["y_range"][0]
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x1} {y1}) list({x2} {y1})) 1 "extendExtend")')
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x2} {y1}) list({x2} {y2})) 1 "extendExtend")')
-                        x1l = side_endpoints["R0"]["low"]["x_range"][0]
-                        y1l = side_endpoints["R0"]["low"]["y"]
-                        x2l = side_endpoints["R270"]["low"]["x"]
-                        y2l = side_endpoints["R270"]["low"]["y_range"][0]
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x1l} {y1l}) list({x2l} {y1l})) 1 "extendExtend")')
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x2l} {y1l}) list({x2l} {y2l})) 1 "extendExtend")')
-                    elif corner_name == "bottom_right":
-                        x1 = side_endpoints["R0"]["high"]["x_range"][1]
-                        y1 = side_endpoints["R0"]["high"]["y"]
-                        x2 = side_endpoints["R90"]["high"]["x"]
-                        y2 = side_endpoints["R90"]["high"]["y_range"][0]
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x1} {y1}) list({x2} {y1})) 1 "extendExtend")')
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x2} {y1}) list({x2} {y2})) 1 "extendExtend")')
-                        x1l = side_endpoints["R0"]["low"]["x_range"][1]
-                        y1l = side_endpoints["R0"]["low"]["y"]
-                        x2l = side_endpoints["R90"]["low"]["x"]
-                        y2l = side_endpoints["R90"]["low"]["y_range"][0]
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x1l} {y1l}) list({x2l} {y1l})) 1 "extendExtend")')
-                        skill_commands.append(f'dbCreatePath(cv list("METAL1" "drawing") list(list({x2l} {y1l}) list({x2l} {y2l})) 1 "extendExtend")')
+
+            def _resolve_endpoint(spec: tuple, net: str) -> Tuple[float, float]:
+                side = spec[0]
+                side_net = side_endpoints[side][net]
+                if spec[1] == "x_range":
+                    x = side_net["x_range"][spec[2]]
+                    y = side_net[spec[3]]
+                else:
+                    x = side_net[spec[1]]
+                    y = side_net[spec[3]][spec[4]]
+                return x, y
+
+            for _corner_name, (start_spec, end_spec) in corner_endpoints.items():
+                if start_spec[0] in side_endpoints and end_spec[0] in side_endpoints:
+                    for net in ("high", "low"):
+                        x1, y1 = _resolve_endpoint(start_spec, net)
+                        x2, y2 = _resolve_endpoint(end_spec, net)
+                        self._append_corner_45_bridge(skill_commands, x1, y1, x2, y2)
 
         return skill_commands, side_endpoints
 
@@ -213,8 +261,7 @@ class SkillGeneratorT180:
         # Secondary lines and pin labels only for digital IO pads
         # Configuration offsets for digital IO wires (relative to pad edges)
         pin_offsets = {"OEN": 5.64, "I": 26.74, "DS": 40.61, "IE": 44.78, "C": 56.395, "PE": 67.73}
-        vdd_wire_offset = 5
-        gnd_wire_offset = 7
+        vdd_wire_offset, gnd_wire_offset = self._digital_wire_offsets()
         # Common wire geometry parameters
         wire_width = 1
         secondary_wire_width = 1.2
